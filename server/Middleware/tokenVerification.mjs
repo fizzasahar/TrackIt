@@ -23,8 +23,3 @@ const tokenVerification = (req, res, next) => {
 };
 export default tokenVerification;
 
-// fetch("url",{
-//     headers:{
-//         "Authorization":"Barear token"
-//     }
-// })

@@ -16,10 +16,11 @@ import {
 const statusColumns = ["To Do", "In Progress", "Done"];
 
 const DraggableTask = ({ task, children }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: task._id,
-    data: { task },
-  });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: task._id,
+      data: { task },
+    });
 
   const style = {
     transform: transform
@@ -29,7 +30,14 @@ const DraggableTask = ({ task, children }) => {
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+    <div ref={setNodeRef} style={style}>
+      {/* ✅ Drag Handle only */}
+      <div
+        {...listeners}
+        {...attributes}
+        className="w-5 h-5 mb-2 bg-gradient-to-r from-pink-600 via-orange-400 to-purple-500 rounded-full cursor-grab"
+        title="Drag this task"
+      />
       {children}
     </div>
   );
