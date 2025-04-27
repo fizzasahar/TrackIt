@@ -4,7 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import { useSelector } from 'react-redux';
 import 'react-toastify/dist/ReactToastify.css';
-import Sidebar from './components/Sidebar';
+import Sidebar from './components/SideBar';
 import Login from './pages/Login';
 import SignUp from './pages/Signup';
 import Profile from './pages/Profile';
