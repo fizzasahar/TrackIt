@@ -1,130 +1,117 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import { useDispatch } from 'react-redux';
-import { loginSuccess } from '../store/authSlice';
-import { Link } from "react-router-dom";
+import { motion } from 'framer-motion';
 
 const apiUrl = import.meta.env.VITE_API_BASE_URL;
 
 const Login = () => {
-    const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-    });
-    const dispatch = useDispatch()
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-    const [loading, setLoading] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const navigate = useNavigate();
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prevData) => ({
-            ...prevData,
-            [name]: value,
-        }));
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        console.log(formData);
+    try {
+      const response = await fetch(`${apiUrl}/api/auth/user/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await response.json();
+      setLoading(false);
 
-        try {
-            const response = await fetch(`${apiUrl}/api/auth/user/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
+      if (response.ok) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userId", data._id);
+        toast.success(data.message);
+        navigate('/dashboard');
+      } else {
+        toast.error(data.message || 'Invalid credentials');
+      }
+    } catch (error) {
+      setLoading(false);
+      toast.error('Something went wrong.');
+    }
+  };
 
-            if (!response.ok) {
-                throw new Error("signup failed. Server responded with " + response.status);
-              }
-              
-            const data = await response.json();
-            setLoading(false);
-            if (response.ok) {
-                localStorage.setItem("token", data.token)
-                localStorage.setItem("userId", data._id)
-                dispatch(loginSuccess({
-                    token: data.token,
-                    userId: data.userId
-                }))
-                toast.success(data.message);
+  return (
+    <div className="flex flex-col md:flex-row h-screen w-screen">
+      {/* Left Side */}
+      <motion.div 
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="flex flex-col justify-center items-center w-full md:w-1/2 p-8 bg-white"
+      >
+        <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Sign In</h2>
+        <form className="w-full max-w-md space-y-6" onSubmit={handleSubmit}>
+          <div>
+            <input
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Email"
+              required
+              className="w-full p-4 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+            />
+          </div>
+          <div className="relative">
+            <input
+              name="password"
+              type={showPassword ? "text" : "password"}
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Password"
+              required
+              className="w-full p-4 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+            />
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
 
-                navigate('/dashboard');
-            } else {
-                toast.error(data.message || 'Invalid email or password');
-            }
-        } catch (error) {
-            setLoading(false);
-            console.error('Error:', error);
-            toast.error(error.message || 'An error occurred while logging in');
-        }
-    };
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full p-4  bg-gradient-to-r from-pink-600 via-orange-400 to-purple-500 hover:bg-pink-600 text-white font-bold rounded-lg transition"
+          >
+            {loading ? "Signing In..." : "Sign In"}
+          </button>
+        </form>
 
-    return (
-        <div className='flex-1 p-6 md:p-10 lg:p-12 bg-gray-100 min-h-screen flex flex-col items-center'>
+        <p className="mt-4 text-gray-600">
+          Don't have an account?{" "}
+          <Link to="/signup" className="text-pink-500 font-semibold hover:text-pink-600">
+            Sign Up
+          </Link>
+        </p>
+      </motion.div>
 
-            <h2 className="text-4xl font-semibold text-black mb-6">Welcome Back 👋</h2>
-            <p className='text-gray-500 text-center mb-6'>Enter your details to sign in.</p>
-            <form className="w-full max-w-md space-y-4" onSubmit={handleSubmit}>
-                <div>
-                    <label className='block text-sm font-medium text-gray-700'>Email</label>
-                    <input
-                        onChange={handleChange}
-                        name='email'
-                        type='email'
-                        className='w-full p-4 rounded-lg bg-white shadow-md text-black border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all'
-                        placeholder='Your Email'
-                        required
-                    />
-                </div>
-                <div>
-                    <label className='block text-sm font-medium text-gray-700'>Password</label>
-                    <div className='relative'>
-                        <input
-                            onChange={handleChange}
-                            name='password'
-                            type={showPassword ? 'text' : 'password'}
-                            className="w-full p-4 rounded-lg bg-white shadow-md text-black border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
-                            placeholder='Your Password'
-                            required
-                        />
-                        <button
-                            type='button'
-                            className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 focus:outline-none'
-                            onClick={() => setShowPassword(!showPassword)}
-                        >
-                            {showPassword ? <FaEyeSlash /> : <FaEye />}
-                        </button>
-                    </div>
-                </div>
-
-
-
-                <button
-                    className="w-full p-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg shadow-md transition-all"
-                    type='submit'
-                    disabled={loading}
-                >
-                    {loading ? 'Logging In...' : 'Log In'}
-                </button>
-            </form>
-
-
-
-            <p className="mt-4 text-gray-600">
-                    Don't have an account?{" "}
-                    <Link to="/signup" className="text-orange-500 hover:text-orange-600 font-semibold">
-                      Signup
-                    </Link>
-                  </p>
-        </div>
-
-    );
+      {/* Right Side */}
+      <motion.div 
+        initial={{ opacity: 0, x: 50 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="hidden md:flex flex-col justify-center items-center w-1/2 bg-gradient-to-b from-pink-600 via-orange-400 to-purple-600 text-white p-8"
+      >
+        <h2 className="text-5xl font-bold mb-4">Welcome Back!</h2>
+        <p className="text-lg">Let's get you started 🚀</p>
+      </motion.div>
+    </div>
+  );
 };
 
 export default Login;

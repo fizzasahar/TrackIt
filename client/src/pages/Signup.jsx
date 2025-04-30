@@ -1,31 +1,30 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import * as Yup from "yup";
+
 const apiUrl = import.meta.env.VITE_API_BASE_URL;
 
-// Validation Schema (Same as Backend Joi)
+// Validation Schema
 const validationSchema = Yup.object({
     name: Yup.string()
-        .matches(/^[a-zA-Z0-9]+$/, "name can only contain letters and numbers (No spaces or special characters)")
-        .min(3, "name must be at least 3 characters long")
-        .max(20, "name cannot exceed 20 characters")
-        .required("name is required"),
+        .matches(/^[a-zA-Z0-9]+$/, "Only letters and numbers (no spaces/special characters)")
+        .min(3, "At least 3 characters required")
+        .max(20, "Maximum 20 characters allowed")
+        .required("Name is required"),
 
     email: Yup.string()
-        .email("Enter a valid email address (e.g., example@domain.com)")
-        .matches(/^[^\s@]+@[^\s@]+\.(com|net)$/, "Only .com and .net domains are allowed")
+        .email("Enter a valid email")
+        .matches(/^[^\s@]+@[^\s@]+\.(com|net)$/, "Only .com and .net domains allowed")
         .required("Email is required"),
 
-
     password: Yup.string()
-        .min(3, "Password must be at least 3 characters long")
-        .max(30, "Password must not exceed 30 characters")
-        .matches(/^[^\s]*$/, "Only letters (A-Z, a-z) and numbers (0-9) are allowed. No spaces.")
-        .matches(/^[a-zA-Z0-9]*$/, "Only letters (A-Z, a-z) and numbers (0-9) are allowed.")
+        .min(3, "At least 3 characters required")
+        .max(30, "Maximum 30 characters allowed")
+        .matches(/^[a-zA-Z0-9]*$/, "Only letters and numbers allowed")
         .required("Password is required"),
 });
 
@@ -35,101 +34,103 @@ const Signup = () => {
     const navigate = useNavigate();
 
     return (
-        <div className="flex-1 p-6 md:p-10 lg:p-12 bg-gray-100 min-h-screen flex flex-col items-center">
-            <h2 className="text-4xl font-semibold text-black mb-6">Create Your Account 🚀</h2>
-            <p className="text-gray-500 text-center mb-6">Welcome! Enter your details to register.</p>
-
-            {/* ✅ Formik Handling */}
-            <Formik
-                initialValues={{ name: "", email: "", password: "" }}
-                validationSchema={validationSchema}
-                onSubmit={async (values) => {
-                    setLoading(true);
-                    console.log("values:", values);
-                    try {
-                        const response = await fetch(`${apiUrl}/api/auth/user`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(values),
-                        });
-
-                        const data = await response.json();
-                        setLoading(false);
-                        console.log("Response:", response, "data", data);
-                        if (response.ok) {
-                            toast.success(data.message);
-                            navigate('/dashboard');
-                        } else {
-                            toast.error(data.message || "An error occurred while signing up");
-                        }
-                    } catch (error) {
-                        setLoading(false);
-                        console.log("Error:", error);
-                        toast.error(error.message || "An error occurred while signing up");
-                    }
-                }}
+        <div className="flex flex-col md:flex-row h-screen w-screen">
+            {/* Left Side */}
+            <motion.div
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="hidden md:flex flex-col justify-center items-center w-1/2 bg-gradient-to-b from-pink-600 via-orange-400 to-purple-600 text-white p-8"
             >
-                <Form className="w-full max-w-md space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Your Name</label>
-                        <Field
-                            name="name"
-                            type="text"
-                            className="w-full p-4 rounded-lg bg-white shadow-md text-black border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
-                            placeholder="Enter your name"
-                        />
-                        <ErrorMessage name="name" component="p" className="text-red-500 text-sm" />
-                    </div>
+                <h2 className="text-5xl font-bold mb-4">Welcome Aboard!</h2>
+                <p className="text-lg">Let's create magic together ✨</p>
+            </motion.div>
+            {/* Right Side */}
+            <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex flex-col justify-center items-center w-full md:w-1/2 p-8 bg-white"
+            >
+                <h2 className="text-4xl font-bold text-gray-800 mb-6 text-center">Create Account 🚀</h2>
+                <Formik
+                    initialValues={{ name: "", email: "", password: "" }}
+                    validationSchema={validationSchema}
+                    onSubmit={async (values) => {
+                        setLoading(true);
+                        try {
+                            const response = await fetch(`${apiUrl}/api/auth/user`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(values),
+                            });
+                            const data = await response.json();
+                            setLoading(false);
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
-                        <Field
-                            name="email"
-                            type="email"
-                            className="w-full p-4 rounded-lg bg-white shadow-md text-black border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
-                            placeholder="Enter your email"
-                        />
-                        <ErrorMessage name="email" component="p" className="text-red-500 text-sm" />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Password</label>
-                        <div className='relative'>
+                            if (response.ok) {
+                                toast.success(data.message);
+                                navigate("/dashboard");
+                            } else {
+                                toast.error(data.message || "Error signing up");
+                            }
+                        } catch (error) {
+                            setLoading(false);
+                            toast.error(error.message || "Something went wrong");
+                        }
+                    }}
+                >
+                    <Form className="w-full max-w-md space-y-6">
+                        <div>
+                            <Field
+                                name="name"
+                                type="text"
+                                placeholder="Name"
+                                className="w-full p-4 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+                            />
+                            <ErrorMessage name="name" component="p" className="text-red-500 text-sm" />
+                        </div>
+                        <div>
+                            <Field
+                                name="email"
+                                type="email"
+                                placeholder="Email"
+                                className="w-full p-4 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
+                            />
+                            <ErrorMessage name="email" component="p" className="text-red-500 text-sm" />
+                        </div>
+                        <div className="relative">
                             <Field
                                 name="password"
                                 type={showPassword ? "text" : "password"}
-                                className="w-full p-4 rounded-lg bg-white shadow-md text-black border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-all"
-                                placeholder="Enter your password"
+                                placeholder="Password"
+                                className="w-full p-4 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-400"
                             />
                             <button
                                 type="button"
-                                className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 focus:outline-none'
-                                onClick={() => { setShowPassword(!showPassword) }}
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600"
+                                onClick={() => setShowPassword(!showPassword)}
                             >
                                 {showPassword ? <FaEyeSlash /> : <FaEye />}
                             </button>
                             <ErrorMessage name="password" component="p" className="text-red-500 text-sm" />
                         </div>
-                    </div>
 
-                    <button
-                        type="submit"
-                        className="w-full p-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg shadow-md transition-all"
-                        disabled={loading}
-                    >
-                        {loading ? "Signing Up..." : "Sign Up"}
-                    </button>
-                </Form>
-            </Formik>
-            <p className="mt-4 text-gray-600">
-                Already have an account?{" "}
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full p-4 bg-gradient-to-r from-pink-600 via-orange-400 to-purple-600 hover:bg-pink-600 text-white font-bold rounded-lg transition"
+                        >
+                            {loading ? "Signing Up..." : "Sign Up"}
+                        </button>
+                    </Form>
+                </Formik>
+                <p className="mt-4 text-gray-600">
+                    Already have an account?{" "}
+                    <Link to="/login" className="text-pink-500 font-semibold hover:text-pink-600">
+                        Login
+                    </Link>
+                </p>
+            </motion.div>
 
-                <Link to="/login" className="text-orange-500 hover:text-orange-600 font-semibold">
-                    Login
-                </Link>
-            </p>
         </div>
-
     );
 };
 

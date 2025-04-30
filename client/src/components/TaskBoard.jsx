@@ -1,149 +1,142 @@
-// src/pages/TaskBoard.jsx
-import React, { useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
-import TaskForm from './TaskForn';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchTasksSuccess, updateTaskStatusSuccess } from '../store/taskSlice';
+import React from "react";
+import EditDialog from "./UpdateTaskForm";
+import DeleteAlertDialog from "./DeleteDialog";
+import { Button } from "@mui/material";
+import { useDispatch, useSelector } from "react-redux";
+import { updateTask } from "../store/actions/taskActions";
+import { toast } from "react-toastify";
+
 import {
   DndContext,
   closestCenter,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { SortableItem, SortableOverlay } from '../components/SortableItem';
+  useDraggable,
+  useDroppable,
+} from "@dnd-kit/core";
 
-const apiUrl = import.meta.env.VITE_API_BASE_URL;
+const statusColumns = ["To Do", "In Progress", "Done"];
 
-const TaskBoard = () => {
-  const dispatch = useDispatch();
-  const tasks = useSelector((state) => state.tasks);
-  const [loading, setLoading] = useState(false);
-  const [activeId, setActiveId] = useState(null);
+const DraggableTask = ({ task, children }) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task._id,
+    data: { task },
+  });
 
-  const sensors = useSensors(
-    useSensor(MouseSensor),
-    useSensor(TouchSensor)
+  const style = {
+    transform: transform
+      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+      : undefined,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      {children}
+    </div>
   );
+};
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`${apiUrl}/api/tasks`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
+const DroppableColumn = ({ status, children }) => {
+  const { setNodeRef } = useDroppable({
+    id: status,
+  });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch tasks. Server responded with ' + response.status);
-        }
+  return (
+    <div
+      ref={setNodeRef}
+      className="flex-1 bg-white rounded-2xl shadow-lg border p-5 border-gray-100"
+    >
+      <h2 className="text-xl font-bold text-gray-700 mb-4 border-b-2 pb-2 border-gradient-to-r from-pink-500 via-orange-400 to-purple-600">
+        {status}
+      </h2>
+      {children}
+    </div>
+  );
+};
 
-        const data = await response.json();
-        const groupedTasks = data.reduce((acc, task) => {
-          acc[task.status.toLowerCase().replace(' ', '')].push(task);
-          return acc;
-        }, { todo: [], inProgress: [], done: [] });
+const TaskBoard = ({ tasks }) => {
+  const dispatch = useDispatch();
+  const { token } = useSelector((state) => state.auth);
 
-        dispatch(fetchTasksSuccess(groupedTasks));
-        setLoading(false);
-      } catch (error) {
-        setLoading(false);
-        console.error('Error:', error);
-        toast.error(error.message || 'An error occurred while fetching tasks');
-      }
-    };
+  const getTasksByStatus = (status) =>
+    tasks.filter(
+      (task) =>
+        task.status?.toLowerCase().replace(" ", "") ===
+        status.toLowerCase().replace(" ", "")
+    );
 
-    fetchTasks();
-  }, [dispatch]);
+  const handleMove = (task, newStatus) => {
+    if (task.status === newStatus) {
+      toast.info(`Task is already in '${newStatus}'`);
+      return;
+    }
 
-  const handleDragEnd = async (event) => {
-    const { over } = event;
-    const { id } = over;
+    dispatch(
+      updateTask(
+        task._id,
+        { ...task, status: newStatus },
+        token,
+        () => toast.success(`Moved to '${newStatus}' successfully`)
+      )
+    );
+  };
 
-    if (!id) return;
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || !active) return;
 
-    const activeTask = tasks[activeId.status].find((task) => task._id === activeId.id);
-    const newTasks = { ...tasks };
+    const task = active.data.current.task;
+    const destinationStatus = over.id;
 
-    newTasks[activeId.status] = newTasks[activeId.status].filter((task) => task._id !== activeId.id);
-    newTasks[id] = [...newTasks[id], activeTask];
-
-    dispatch(updateTaskStatusSuccess(newTasks));
-
-    try {
-      await fetch(`${apiUrl}/api/tasks/${activeId.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          status: id.charAt(0).toUpperCase() + id.slice(1).replace(' ', ' '),
-        }),
-      });
-
-      toast.success('Task status updated successfully');
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error(error.message || 'An error occurred while updating the task status');
+    if (task.status !== destinationStatus) {
+      handleMove(task, destinationStatus);
     }
   };
 
-  const handleTaskCreated = (task) => {
-    dispatch(addTaskSuccess(task));
-  };
-
-  if (loading) {
-    return <div className="flex-1 p-6 md:p-10 lg:p-12 bg-gray-100 min-h-screen flex flex-col items-center">Loading...</div>;
-  }
-
   return (
-    <div className="flex-1 p-6 md:p-10 lg:p-12 bg-gray-100 min-h-screen flex flex-col items-center">
-      <TaskForm onTaskCreated={handleTaskCreated} />
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <div className="flex space-x-6 mt-6">
-          {Object.keys(tasks).map((status) => (
-            <SortableContext key={status} items={tasks[status]} strategy={verticalListSortingStrategy}>
-              <div className="w-full max-w-md p-4 bg-white shadow-md rounded-lg">
-                <h3 className="text-2xl font-semibold text-black mb-4">
-                  {status.charAt(0).toUpperCase() + status.slice(1).replace(' ', ' ')}
-                </h3>
-                {tasks[status].map((task) => (
-                  <SortableItem
-                    key={task._id}
-                    id={task._id}
-                    status={status}
-                    task={task}
-                    onDragStart={() => setActiveId({ id: task._id, status })}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          ))}
-        </div>
-        {activeId && (
-          <SortableOverlay>
-            <div className="p-4 mb-4 bg-gray-100 rounded-lg shadow-md">
-              <h4 className="text-xl font-semibold text-black">
-                {tasks[activeId.status].find((task) => task._id === activeId.id).title}
-              </h4>
-              <p className="text-gray-600">
-                Created By: {tasks[activeId.status].find((task) => task._id === activeId.id).createdBy.username}
-              </p>
+    <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <div className="flex flex-col md:flex-row gap-6 px-4 pb-10">
+        {statusColumns.map((status) => (
+          <DroppableColumn key={status} status={status}>
+            <div className="space-y-4">
+              {getTasksByStatus(status).map((task) => (
+                <DraggableTask key={task._id} task={task}>
+                  <div
+                    className="bg-gray-50 p-4 rounded-xl border border-transparent shadow hover:shadow-md transition duration-300"
+                    style={{
+                      borderImage:
+                        "linear-gradient(to right, #ec4899, #f97316, #8b5cf6) 1",
+                      borderStyle: "solid",
+                      borderWidth: "1px",
+                    }}
+                  >
+                    <h3 className="font-semibold text-gray-800 mb-1">
+                      {task.title}
+                    </h3>
+                    <p className="text-sm text-gray-600">{task.description}</p>
+                    <div className="flex flex-wrap justify-end gap-2 mt-4">
+                      <EditDialog task={task} />
+                      <DeleteAlertDialog id={task._id} />
+                      {statusColumns
+                        .filter((s) => s !== task.status)
+                        .map((s) => (
+                          <Button
+                            key={s}
+                            variant="outlined"
+                            size="small"
+                            onClick={() => handleMove(task, s)}
+                          >
+                            Move to {s}
+                          </Button>
+                        ))}
+                    </div>
+                  </div>
+                </DraggableTask>
+              ))}
             </div>
-          </SortableOverlay>
-        )}
-      </DndContext>
-    </div>
+          </DroppableColumn>
+        ))}
+      </div>
+    </DndContext>
   );
 };
 
